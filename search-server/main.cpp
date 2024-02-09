@@ -7,19 +7,6 @@
 #include <utility>
 #include <vector>
 
-<<<<<<< HEAD
-=======
-// Закомитьте изменения и отправьте их в свой репозиторий.
-#include <algorithm>
-#include <iostream>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
-#include <map>
-#include <cmath>
-
->>>>>>> 199e999d13a15ffc2b53cb4530d9b79ba6bcf08a
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
@@ -121,11 +108,7 @@ private:
     Query ParseQuery(const string& text) const {
         Query query_words;
         for (const string& word : SplitIntoWordsNoStop(text)) {
-<<<<<<< HEAD
             if (word[0] == '-'){
-=======
-            if (word[0]=='-'){
->>>>>>> 199e999d13a15ffc2b53cb4530d9b79ba6bcf08a
                 query_words.minus.push_back(word.substr(1));
             }
             else {
@@ -135,24 +118,18 @@ private:
         return query_words;
     }
 
-<<<<<<< HEAD
     double ComputeIDF (const string& word) const {
         if(word_to_document_freqs_.count(word) == 0){
-=======
-    double IDF (const string& word) const {
-        if(word_to_document_freqs_.count(word)==0){
->>>>>>> 199e999d13a15ffc2b53cb4530d9b79ba6bcf08a
             return 0.0;
         }
         return static_cast<double> (log(document_count_ * 1.0 /word_to_document_freqs_.at(word).size()));
     }
     
-<<<<<<< HEAD
     vector<Document> FindAllDocuments(const Query& query_words) const {
         vector<Document> matched_documents; 
         map<int, double> document_to_relevance;
         for (const auto& word : query_words.plus) {
-            if(word_to_document_freqs_.count(word) == 0){
+            if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
             const double idf = ComputeIDF(word);
@@ -167,27 +144,6 @@ private:
            for (auto& [id, tf]:word_to_document_freqs_.at(word)){
                document_to_relevance.erase(tf);
            }
-=======
-    vector<Document> FindAllDocuments(Query& query_words) const {
-        vector<Document> matched_documents; 
-        map<int, double> document_to_relevance;
-        for (const auto& word : query_words.plus) {
-            if(word_to_document_freqs_.count(word)==0){
-                continue;
-            }
-                const double idf = IDF(word);
-                for (auto& [id, tf]:word_to_document_freqs_.at(word)){
-                    document_to_relevance[id] += tf*idf;
-                }
-        }
-       for (const auto& word:query_words.minus){
-           if(word_to_document_freqs_.count(word)==0){
-               continue;
-           }
-                for (auto& [id, tf]:word_to_document_freqs_.at(word)){
-                    document_to_relevance.erase(tf);
-                }
->>>>>>> 199e999d13a15ffc2b53cb4530d9b79ba6bcf08a
        }
 
         for (const auto& [document_id, relevance] : document_to_relevance) {
@@ -218,8 +174,4 @@ int main() {
         cout << "{ document_id = "s << document_id << ", "
              << "relevance = "s << relevance << " }"s << endl;
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 199e999d13a15ffc2b53cb4530d9b79ba6bcf08a
