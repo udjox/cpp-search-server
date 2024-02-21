@@ -2,14 +2,17 @@
 #include <cmath>
 #include <iostream>
 #include <map>
+#include <numeric> // Добавлен для std::accumulate
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+#include <limits> // Добавлен для std::numeric_limits
 
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double EPSILON = 1e-6; // Добавлено для сравнения вещественных чисел
 
 string ReadLine() {
     string s;
@@ -20,7 +23,7 @@ string ReadLine() {
 int ReadLineWithNumber() {
     int result;
     cin >> result;
-    ReadLine();
+    ReadLine(); // Чтение перевода строки после числа
     return result;
 }
 
@@ -75,24 +78,23 @@ public:
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
     }
 
-    vector<Document> FindTopDocuments(const string& raw_query) const {
-        return FindTopDocuments(raw_query, [](int document_id, DocumentStatus status, int rating){
-            return status == DocumentStatus::ACTUAL;
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status = DocumentStatus::ACTUAL) const {
+        return FindTopDocuments(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
+            return document_status == status;
         });
     }
-    
-    template<typename predicate>
-    vector<Document> FindTopDocuments(const string& raw_query, predicate predict) const {
+
+    template<typename DocumentPredicate>
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate predicate) const {
         const Query query = ParseQuery(raw_query);
-        auto matched_documents = FindAllDocuments(query, predict);
+        auto matched_documents = FindAllDocuments(query, predicate);
 
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document& lhs, const Document& rhs) {
-                 if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                 if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
                      return lhs.rating > rhs.rating;
-                 } else {
-                     return lhs.relevance > rhs.relevance;
                  }
+                 return lhs.relevance > rhs.relevance;
              });
         if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
             matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
@@ -100,18 +102,11 @@ public:
         return matched_documents;
     }
 
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status) const{
-        return FindTopDocuments(raw_query, [&status](int document_id, DocumentStatus new_status, int rating){
-            return new_status == status;
-        });
-    }
-    
     int GetDocumentCount() const {
         return documents_.size();
     }
 
-    tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query,
-                                                        int document_id) const {
+    tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
         const Query query = ParseQuery(raw_query);
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -162,11 +157,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
-        return rating_sum / static_cast<int>(ratings.size());
+        return accumulate(ratings.begin(), ratings.end(), 0) / static_cast<int>(ratings.size());
     }
 
     struct QueryWord {
@@ -177,7 +168,6 @@ private:
 
     QueryWord ParseQueryWord(string text) const {
         bool is_minus = false;
-        // Word shouldn't be empty
         if (text[0] == '-') {
             is_minus = true;
             text = text.substr(1);
@@ -205,10 +195,10 @@ private:
         return query;
     }
 
-    // Existence required
     double ComputeWordInverseDocumentFreq(const string& word) const {
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
+
     template<typename DocumentPredicate>
     vector<Document> FindAllDocuments(const Query& query, DocumentPredicate doc_pred) const {
         map<int, double> document_to_relevance;
@@ -217,33 +207,32 @@ private:
                 continue;
             }
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-            for (const auto &[document_id, term_freq] : word_to_document_freqs_.at(word)) {
+            for (const auto& [document_id, term_freq] : word_to_document_freqs_.at(word)) {
                 const auto& doc_info = documents_.at(document_id);
                 if (doc_pred(document_id, doc_info.status, doc_info.rating)) {
                     document_to_relevance[document_id] += term_freq * inverse_document_freq;
                 }
             }
         }
-
         for (const string& word : query.minus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
-            for (const auto &[document_id, _] : word_to_document_freqs_.at(word)) {
+            for (const auto& [document_id, _] : word_to_document_freqs_.at(word)) {
                 document_to_relevance.erase(document_id);
             }
         }
 
         vector<Document> matched_documents;
-        for (const auto &[document_id, relevance] : document_to_relevance) {
-            matched_documents.push_back(
-                {document_id, relevance, documents_.at(document_id).rating});
+        for (const auto& [document_id, relevance] : document_to_relevance) {
+            matched_documents.push_back({document_id, relevance, documents_.at(document_id).rating});
         }
         return matched_documents;
     }
 };
 
-// ==================== для примера =========================
+
+
 
 void PrintDocument(const Document& document) {
     cout << "{ "s
